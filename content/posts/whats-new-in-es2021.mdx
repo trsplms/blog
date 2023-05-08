@@ -1,0 +1,300 @@
+---
+title: What’s New in ES2021
+description: A quick look at the most interesting features that ES2021 (or ES12) provides to us.
+date: "2021-02-12"
+---
+
+ES2021 (or ES12) is the ECMAScript version corresponding to the year 2021. This version doesn’t introduce as many new features as those that appeared in ES6, back in 2015. Nonetheless, some valuable features have been included.
+
+Before moving on, let me clarify something. This article was written on February 12, 2021, based on the [ES2021 Release Candidate](https://github.com/tc39/ecma262/releases/tag/es2021-candidate-2021-03). The features listed in that release require approval from the ECMA General Assembly and such approval is expected to be granted by June 2021. From that moment, these features will be—officially—part of the standard per se.
+
+It’s worth mentioning that—at the time of writing this blog post—all of the features enumerated here are supported by the [Google Chrome Canary](https://www.google.com/chrome/canary/) build. You’re free to try them all there.
+
+Without further ado, let’s review the most interesting features that the new version of the specification makes available for us.
+
+## Logical Assignment Operators
+
+The new [logical assignment operators](https://tc39.es/proposal-logical-assignment/)—`&&=`, `||=`, and `??=`—combine the logical operations with the assignment operation. They are positively similar to the current logical operators and are very helpful for assigning default values to variables.
+
+### Logical AND Assignment Operator (`&&=`)
+
+The logical AND assignment operator is the antithesis of the logical OR assignment operator. In the expression `x &&= y`, `y` is assigned to `x`, if and only if, `x` is a [_truthy_](https://developer.mozilla.org/en-US/docs/Glossary/Truthy) value. Otherwise, it preserves its initial value.
+
+```js
+const userDetails = {
+  username: 'neo',
+  passcode: '4dfCrm-2sW65x-1Li9A',
+  isAdmin: false
+}
+
+const newPasscode = '8s35Fv-lM871nC-0iiyZ5'
+
+userDetails.passcode &&= newPasscode
+
+console.log(userDetails.passcode)
+// Prints '8s35Fv-lM871nC-0iiyZ5'
+```
+
+### Logical OR Assignment Operator (`||=`)
+
+The logical OR assignment operator is, in turn, the antithesis of the logical AND assignment operator. It is s a short-circuit operation just like the logical OR operator (`||`).
+
+The expression `x ||= y` is identical to the expression `x || (x = y)`. This means that `y` will be assigned to `x`, if and only if, `x` constitutes a [_falsy_](https://developer.mozilla.org/en-US/docs/Glossary/Falsy) value. Otherwise, it will preserve its initial value.
+
+```js
+const userDetails = {
+  username: 'neo',
+  passcode: '4dfCrm-2sW65x-1Li9A',
+  isAdmin: false
+}
+
+const newPasscode = '8s35Fv-lM871nC-0iiyZ5'
+
+userDetails.passcode ||= newPasscode
+
+console.log(userDetails.passcode)
+// Prints '4dfCrm-2sW65x-1Li9A'
+```
+
+### Logical Nullish Assignment Operator (`??=`)
+
+The [logical nullish assignment operator](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Logical_nullish_assignment) only assigns `y` to `x`, if `x` is _nullish_ (i.e., if `x` is either `null` or `undefined`).
+
+```js
+const userDetails = {
+  username: 'neo',
+  passcode: '4dfCrm-2sW65x-1Li9A',
+  isAdmin: false
+}
+
+const newPasscode = '8s35Fv-lM871nC-0iiyZ5'
+
+userDetails.passcode ??= newPasscode
+
+console.log(userDetails.passcode)
+// Prints '8s35Fv-lM871nC-0iiyZ5'
+```
+
+## `String.prototype.replaceAll()`
+
+This is a suitable method that addresses a particular shortage in `String.replace()`: the inability to replace all the occurrences of a pattern with a new string (to do that, you had to use [regular expressions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions)).
+
+Now, with the introduction of `String.replaceAll()` to the language, we can easily replace _all_ the occurrences of a given substring at once.
+
+The `String.replaceAll()` method _returns a new string_ in which all occurrences of a pattern are replaced by a _replacement_ passed to it. The first parameter, a _pattern_, can either be a string or a regex pattern, and the second parameter, a _replacement_, can either be a string or a function that creates a new string to replace the pattern. This method operates without mutating the original string.
+
+```js 
+const anOpinion = 'Typed languages like TypeScript are a good thing. Go learn TypeScript!'
+const anAdvice = anOpinion.replace('TypeScript', 'Swift')
+const theAdvice = anOpinion.replaceAll('TypeScript', 'Swift')
+
+console.log(anOpinion)
+// Prints 'Typed languages like TypeScript are a good thing. Go learn TypeScript!'
+
+console.log(anAdvice)
+// Prints 'Typed languages like Swift are a good thing. Go learn TypeScript!'
+// Only the first occurrence of 'TypeScript' is replaced
+
+console.log(theAdvice)
+// Prints 'Typed languages like Swift are a good thing. Go learn Swift!'
+// All the occurrences of 'TypeScript' are replaced
+```
+
+## `Promise.any()` and `AggregateError`
+
+```js 
+Promise.any([promise1, promise2, promise3, …]).then(…do something)
+```
+
+[`Promise.any()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/any) takes an iterable of [`Promise`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) objects and, **as soon as one of the promises in the iterable fulfills**, it **returns a single promise** that resolves to the value from that fulfilled promise. If no promises in the iterable fulfill (i.e., if all of the given promises are rejected), then the returned promise is rejected with an `AggregateError`—a new subclass of `Error` that groups together individual errors. In essence, the `Promise.any()` method is the opposite of `Promise.all()`.
+
+```js 
+const promise1 = Promise.reject(0)
+const promise2 = new Promise((resolve) => setTimeout(resolve, 100, 'quick'))
+const promise3 = new Promise((resolve) => setTimeout(resolve, 500, 'slow'))
+
+const promises = [promise1, promise2, promise3]
+
+Promise.any(promises).then((value) => console.log(value))
+// Prints 'quick'
+```
+
+Now, back to the scenario in which none of the promises passed to `Promise.any()` fulfills (which also takes into account the case where the passed iterator is empty), we need to catch the exception and handle it.
+
+```js 
+const promise = new Promise((_, reject) => reject(new Error('Whoops!')))
+
+try {
+  async function() {
+    const result = await Promise.any([promise])
+
+    console.log(result)
+  }()
+} catch (error) {
+  console.error(error.errors)
+  // Prints 'AggregateError: All promises were rejected'
+}
+```
+
+For the sake of simplicity, we passed a to-be-rejected promise to `Promise.any()`. As a result, the above code logs the following error in the console.
+
+`Promise.any()` has a decent support on [web browsers](https://caniuse.com/mdn-javascript_builtins_promise_any) yet no implementation has been done on Node.js at the time of writing this blog post.
+
+## Numeric Separator
+
+ES2021 introduced the numeric separator to improve the readability of large numbers. As a result, we are allowed to use the underscore (`_`) character to separate number groups, just like we use commas to separate numbers in writing.
+
+Take a look at the number `1197982359`, which is the approximate number of live websites in 2020. At first, it's not particularly easy to spot that is a number of the billion order.
+
+```js
+const numberOfWebsitesWorlwide = 1_197_982_359
+
+console.log(numberOfWebsitesWorlwide)
+// Prints 1197982359
+```
+
+We can see that with this _cosmetic addition_, the number can be read more easily.
+
+Please note that this provides no performance benefits whatsoever. `1197982359` will still be exactly equal to `1_197_982_359`.
+
+As for support, this feature is already implemented in [most browsers](https://caniuse.com/mdn-javascript_grammar_numeric_separators) as well as in Node.js (since version 12.5.0).
+
+## `Intl.ListFormat`
+
+Before exploring how this new constructor works, let's recall what the `Intl` object is: a namespace for the ECMAScript Internationalization API, which supplies a collection of helper methods to support internalization efforts, like language-sensitive string comparison, number formatting as well as date and time formatting.
+
+Consequently, the `Intl.ListFormat` object enables language-sensitive list formatting. Its constructor,`ListFormat`, creates and returns a _formatter_ object that—depending on the configuration passed upon creation—will join lists of strings using the best localized conventions.
+
+Let’s take a look at an example to better illustrate this:
+
+```js 
+const javaScriptFrameworks = ['Angular', 'React', 'Vue']
+
+const shortUnitFormatter = new Intl.ListFormat(
+  'en',
+  { style: 'short', type: 'unit' }
+)
+
+const narrowUnitFormatter = new Intl.ListFormat(
+  'en',
+  { style: 'narrow', type: 'unit' }
+)
+
+const longConjunctionFormatter = new Intl.ListFormat(
+  'en',
+  { style: 'long', type: 'conjunction' }
+)
+
+const longDisjunctionFormatter = new Intl.ListFormat(
+  'en',
+  { style: 'long', type: 'disjunction' }
+)
+
+console.log(shortUnitFormatter.format(javaScriptFrameworks))
+// Prints 'Angular, React, Vue'
+
+console.log(narrowUnitFormatter.format(javaScriptFrameworks))
+// Prints 'Angular React Vue'
+
+console.log(longConjunctionFormatter.format(javaScriptFrameworks))
+// Prints 'Angular, React, and Vue'
+
+console.log(longDisjunctionFormatter.format(javaScriptFrameworks))
+// Prints 'Angular, React, or Vue'
+```
+
+The first (optional) argument for the `ListFormat` constructor is the language to be used—`'en'` for English in the example above. You can also pass an array of these [BCP 47 Language Tags](https://www.techonthenet.com/js/language_tags.php).
+
+The second (also optional) parameter is an object with three (also optional) fields:
+
+- `localeMatcher` — a string with the value `'lookup'` or `'best fit'` that specifies which locale matching algorithm to use. The default is `'best fit'`.
+
+- `style` — a string that sets the separator for the final string. It can take a value of `'long'`, `'short'`, or `'narrow'`.
+
+- `type` — a string that sets the format of the returned string. It can take a value of `'conjunction'`, `'disjunction'`, or `'unit'`.
+
+## `dateStyle` and `timeStyle`, New Options for `Intl.DateTimeFormat`
+
+[`Intl.DateTimeFormat`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/DateTimeFormat/DateTimeFormat) is a constructor for a language-sensitive date and time formatter, long-supported in the JavaScript ecosystem.
+
+These new options allow us to control the length of the local-specific formatting of date and time strings.
+
+Let’s see some examples on how to use it when working with times…
+
+```js 
+const date Date.now()
+
+const shortTimeFormatter = new Intl.DateTimeFormat(
+  'en',
+  { timeStyle: 'short' }
+)
+
+const mediumTimeFormatter = new Intl.DateTimeFormat(
+  'en',
+  { timeStyle: 'medium' }
+)
+
+const longTimeFormatter = new Intl.DateTimeFormat(
+  'en',
+  { timeStyle: 'long' }
+)
+
+console.log(shortTimeFormatter.format(date))
+// Prints '4:46 PM'
+
+console.log(mediumTimeFormatter.format(date))
+// Prints '4:46:23 PM'
+
+console.log(longTimeFormatter.format(date))
+// Prints '4:46:23 PM GMT+2'
+```
+
+…and with dates:
+
+```js 
+const date = Date.now()
+
+const shortDateFormatter = new Intl.DateTimeFormat(
+  'en',
+  { dateStyle: 'short' }
+)
+
+const mediumDateFormatter = new Intl.DateTimeFormat(
+  'en',
+  { dateStyle: 'medium' }
+)
+
+const longDateFormatter = new Intl.DateTimeFormat(
+  'en',
+  { dateStyle: 'long' }
+)
+
+console.log(shortDateFormatter.format(date))
+// Prints '4/22/20'
+
+console.log(mediumDateFormatter.format(date))
+// Prints 'Apr 22, 2020'
+
+console.log(longDateFormatter.format(date))
+// Prints 'April 22, 2020'
+```
+
+We can also combine the two options to get a date-time string:
+
+```js 
+const date = Date.now()
+
+const dateTimeFormatter = new Intl.DateTimeFormat(
+  'en',
+  { dateStyle: 'short', timeStyle: 'long' }
+)
+
+console.log(dateTimeFormatter.format(date))
+// Prints '4/22/20, 4:46:23 PM GMT+2'
+```
+
+## Wrapping Up 
+
+JavaScript is a constantly evolving language, and that’s something very healthy for web development. Since the advent of ES6 in 2015, we’re experiencing an active evolution of the language. In this article, we’ve examined the most interesting features introduced by ES2021.
+
+Although many of these features may not be significant for your development workflow, they address situations that could only be achieved before with tricks or great verbosity.
