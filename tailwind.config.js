@@ -11,6 +11,11 @@ module.exports = {
       white: "#E4E5E0",
       black: "#262626",
     },
+    fontFamily: {
+      sans: ["'ABC Normal'", "sans-serif"],
+      serif: ["'NHG Display'", "serif"],
+      mono: ["'MD IO'", "monospace"],
+    },
     extend: {},
   },
   plugins: [require("@tailwindcss/typography")],
